@@ -25,20 +25,26 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 	// Add random Gaussian noise to each particle.
 	// NOTE: Consult particle_filter.h for more information about this method (and others in this file).
 	num_particles = 200;
+
+    default_random_engine gen;
+	normal_distribution<double> x_gauss(x, std[0]);
+	normal_distribution<double> y_gauss(y, std[1]);
+	normal_distribution<double> theta_gauss(theta, std[2]);
+
 	for (int i = 0; i < num_particles; ++i) {
  
         particles[i].id = i;
-		particles[i].x = sense_x;
-		particles[i].y = sense_y;
-		particles[i].theta = sense_theta;
-		particles[i].weight = 1;
+		particles[i].x = x_gauss(gen);
+		particles[i].y = y_gauss(gen);
+		particles[i].theta = theta_gauss(gen);
+		particles[i].weight = 1.0;
 
 		// noise ???!?!?!?!!?
 	}
 
 	is_initialized = true;
 
-	return
+	return;
 
 }
 
@@ -51,19 +57,19 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 	for (int i = 0; i < num_particles; ++i) {
 
         // if no yaw (driving straight):
-		if fabs(yaw_rate) == 0 { 
+		if (fabs(yaw_rate) == 0) { 
 
             // use formulas from lessons
 			particles[i].x += velocity * delta_t * cos(particles[i].theta); // cos > adjacent > x
             particles[i].y += velocity * delta_t * sin(particles[i].theta); // sin > opposite > y
-			particles[i].theta = 0 // going straight, no yaw/theta??
+			particles[i].theta = 0; // going straight, no yaw/theta??
 
 		}
 		// if yaw (steering/turning front wheels):
 		else {
 
-			particles[i].x  = velocity/yaw_rate * (sin(particles.theta + (yaw_rate * delta_t)) - sin(particle.theta))
-	        particles[i].y += velocity/yaw_rate * (cos(particles.theta) - cos(particles.theta + (yaw_rate * delta_t)));
+			particles[i].x  = velocity/yaw_rate * (sin(particles[i].theta + (yaw_rate * delta_t)) - sin(particles[i].theta));
+	        particles[i].y += velocity/yaw_rate * (cos(particles[i].theta) - cos(particles[i].theta + (yaw_rate * delta_t)));
 		    particles[i].theta = yaw_rate * delta_t;
 		}
 	}
@@ -81,23 +87,24 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::ve
 	std:vector<LandmarkObs> closest_landmarks;
 	LandmarkObs closest;
 
-	for (int i = 0; i < observations.size()){
+	for (int i = 0; i < observations.size(); i++){
 
-		double shortest = 9007199254740991 // big number!
+		double shortest = 9007199254740991; // big number!
 
-		for (int j = 0; j < predicted.size()) {
+		for (int j = 0; j < predicted.size(); j++) {
 			
 			double distance = dist(observations[i].x,observations[i].y,predicted[j].x,predicted[j].y);
 			if (distance < shortest) {
 				shortest = distance;
-				closest = prediction[j];
+				closest = predicted[j];
 			}
 		}
 
-		closest_landmarks.push_back(closest);
+		observations[i].id = shortest;
 	}
 
-	return closest_landmarks;
+    // change to not return a value
+	// return closest_landmarks;
 
 }
 
@@ -127,12 +134,12 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 		std::vector<LandmarkObs> transformed_observations;
 
 	    // for( auto it = x.begin(); it != x.end(); i++)
-		for (auto observations: observations) {
+		for (auto observation: observations) {
 
-			LandmarkObs transformed_observations // to hold transformed observation
-			transformed_observations.x  = p.x + (observation.x * cos(p.theta)) - (observation.y * sin(p.theta));
-			transformed_observations.y  = p.y + (observation.x * sin(p.theta)) + (observation.y * cos(p.theta));
-			transformed_observations.id = observation.id;
+			LandmarkObs transformed_observation; // to hold transformed observation
+			transformed_observation.x  = p.x + (observation.x * cos(p.theta)) - (observation.y * sin(p.theta));
+			transformed_observation.y  = p.y + (observation.x * sin(p.theta)) + (observation.y * cos(p.theta));
+			transformed_observation.id = observation.id;
 
 			transformed_observations.push_back(transformed_observation);
 		}
@@ -152,24 +159,32 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 			}
 		}
 
-		// link closest landmarks to observations of particle
-		std::vector<LandmarkObs>  linked_landmarks;
-		linked_landmarks = dataAssociation(predicted, transformed_observations);
+		// compare distances from vehicle observation to particle observation
+		// update particle weights for use in next round of sampling and observations
+
+		dataAssociation(predicted, transformed_observations);
+
+		//std::vector<LandmarkObs>  linked_landmarks;
+		//inked_landmarks = closest_landmarks;
 
 		double weight = 1;
-		for (ing j=0; < linked_landmarks.size(); ++j) {
+		//double gauss_norm;
 
-			double dx = transformed_observations[j].x - linked_landmarks[j].x;
-			double dy = transformed_observations[j].y - linked_landmarks[j].y;
+
+		for (int j=0; j < transformed_observations.size(); ++j) {
+
+            int transformed_id = transformed_observations[j].id;
+			double dx = transformed_observations[j].x - predicted[transformed_id].x;
+			double dy = transformed_observations[j].y - predicted[transformed_id].y;
 
 			// multivariate-gaussian probability - normalization term
-			gauss_norm = 1.0 / (2 * M_PI * sigma_x * sigma_y);
-			double exponent = (-dx*dx / (2 * sigma_x ** 2)) + (-dy*dy / (2 * sigma_y ** 2));
+			double gauss_norm = 1.0 / (2 * M_PI * sigma_x * sigma_y);
+			double exponent = (-dx*dx / (2 * sigma_x * sigma_x)) + (-dy*dy / (2 * sigma_y * sigma_y));
 			weight *= gauss_norm * exp(-exponent);
 		}
 
-		p.weight = probability;
-		weights[i] = probability;
+		p.weight = weight;
+		weights[i] = weight;
 	}
 
 	return ;
@@ -181,18 +196,19 @@ void ParticleFilter::resample() {
 	//   http://en.cppreference.com/w/cpp/numeric/random/discrete_distribution
 
 	discrete_distribution<int> d(weights.begin(), weights.end());
-	vector<Particle> weighted_sample(num_particles);
+	vector<Particle> weighted_samples(num_particles);
+    default_random_engine gen;
 
 	for (int i = 0; i < num_particles; i++) {
 
 		int j = d(gen);
-		weighted_sample[i] = particles[j];
+		weighted_samples[i] = particles[j];
 
 	}
 
-	particles = weighted_sample;
+	particles = weighted_samples;
 
-	return;
+	//return;
 
 }
 
