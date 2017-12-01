@@ -187,26 +187,23 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 
         // TODO: obs and preds look good NOT BAD ATLEAST, try and see if udpate is working correctly
 
-        double weight = 1;
+        double weight = 1.0;
         //double gauss_norm;
 
         dataAssociation(landmarks_seen, transformed_observations);
 
-        // ======================= TODO CHECK THIS LOOP NOW =======================
+        cout << "=============== Now compare vehicle/particle observations, update weights ===============" << endl;
 
         for (int j=0; j < transformed_observations.size(); ++j) {
             //cout << "transformed observations loop" << endl;
-            //int transformed_id = transformed_observations[j].id;
             double dx = transformed_observations[j].x - landmarks_seen[j-1].x;
             double dy = transformed_observations[j].y - landmarks_seen[j-1].y;
 
             // multivariate-gaussian probability - normalization term
             double gauss_norm = 1.0 / (2 * M_PI * sigma_x * sigma_y);
-            //cout << "gauss norm = 1.0 / (3 * " << M_PI << " * " << sigma_x << " * " << sigma_y << ")" << endl;
-            //double exponent = exp(-dx*dx / (2*sigma_x*sigma_x))* exp(-dy*dy / (2*sigma_y*sigma_y));
-            //weight *= gauss_norm * exponent;
-            weight *= 1.0/(2*M_PI*sigma_x*sigma_y) * exp(-dx*dx / (2*sigma_x*sigma_x))* exp(-dy*dy / (2*sigma_y*sigma_y)); 
-            cout << "gauss norm: " << gauss_norm << "    weight: " << weight << endl;
+            double exponent = exp(-dx*dx / (2*sigma_x*sigma_x))* exp(-dy*dy / (2*sigma_y*sigma_y));
+            weight *= gauss_norm * exponent;
+            cout << "gauss norm: " << gauss_norm << "    exponent: " << exponent << "    weight: " << weight << endl;
             //cout << "trans obs loop end" << endl;
         }
 
