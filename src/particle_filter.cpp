@@ -118,17 +118,20 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::ve
 			//cout << "second j ass loop" << endl;
 			double error = dist(observations[i].x,observations[i].y,predicted[j].x,predicted[j].y);
 
-			cout << "Observation (x,y): " << observations[i].x << " - " << observations[i].y << endl;
-			cout << "Prediction  (x,y): " << predicted[i].x << " - " << predicted[i].y << endl;
+			cout << "Index["<< j << "] Observation = (" << observations[i].x << "," << observations[i].y << ")";
+			cout << "  Prediction = (" << predicted[i].x << "," << predicted[i].y << ")";
+			cout << "  Error = " << error << "(" << current_smallest_error << ")";
+			
 
 			if (error < current_smallest_error) {
-				cout << "distance is shorter!" << endl;
-			    cout << "previous error: " << current_smallest_error << endl;
-				cout << "new smallest error: " << error << endl;
+				cout << "  shorter!" << endl;
+			    //cout << "previous error: " << current_smallest_error << endl;
+				//cout << "new smallest error: " << error << endl;
 				current_j = j;
 				current_smallest_error = error;
 				//closest = predicted[j];
 			}
+			else { cout << endl;}
 		}
         //cout << "before observations[i]" << endl;
 		observations[i].id = current_j;
@@ -170,8 +173,8 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 		for (auto& landmark: map_landmarks.landmark_list) {
 
 			double distance = dist(p.x, p.y, landmark.x_f, landmark.y_f);
-			cout << "Distance is:================================== " << distance << endl;
-			cout << "Sensor r is:================================== " << sensor_range << endl;
+			//cout << "Distance is:================================== " << distance << endl;
+			//cout << "Sensor r is:================================== " << sensor_range << endl;
 
 			if (distance < sensor_range) {
 				LandmarkObs current_landmark;
@@ -193,22 +196,23 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 
 		for (int j=0; j < transformed_observations.size(); ++j) {
             //cout << "transformed observations loop" << endl;
-            int transformed_id = transformed_observations[j].id;
-			double dx = transformed_observations[j].x - landmarks_seen[transformed_id].x;
-			double dy = transformed_observations[j].y - landmarks_seen[transformed_id].y;
+            //int transformed_id = transformed_observations[j].id;
+			double dx = transformed_observations[j].x - landmarks_seen[j-1].x;
+			double dy = transformed_observations[j].y - landmarks_seen[j-1].y;
 
 			// multivariate-gaussian probability - normalization term
 			double gauss_norm = 1.0 / (2 * M_PI * sigma_x * sigma_y);
-			double exponent = (-dx*dx / (2 * sigma_x * sigma_x)) + (-dy*dy / (2 * sigma_y * sigma_y));
-			weight *= gauss_norm * exp(-exponent);
-			cout << "weight: " << weight << endl;
+			//cout << "gauss norm = 1.0 / (3 * " << M_PI << " * " << sigma_x << " * " << sigma_y << ")" << endl;
+			//double exponent = exp(-dx*dx / (2*sigma_x*sigma_x))* exp(-dy*dy / (2*sigma_y*sigma_y));
+			//weight *= gauss_norm * exponent;
+			weight *= 1.0/(2*M_PI*sigma_x*sigma_y) * exp(-dx*dx / (2*sigma_x*sigma_x))* exp(-dy*dy / (2*sigma_y*sigma_y)); 
+			cout << "gauss norm: " << gauss_norm << "    weight: " << weight << endl;
 			//cout << "trans obs loop end" << endl;
 		}
 
         // TODO: create a push_back() instead
 		particles[i].weight = weight;
-		cout << "weight is: " << weight << endl;
-		cout << "weight index is: " << i << endl;
+		cout << "particles[" << i << "].weight is: " << weight << endl;
 		weights[i] = weight;
 	}
 }
