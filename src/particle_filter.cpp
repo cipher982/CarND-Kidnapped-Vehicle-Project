@@ -24,7 +24,7 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
     //   x, y, theta and their uncertainties from GPS) and all weights to 1. 
     // Add random Gaussian noise to each particle.
     // NOTE: Consult particle_filter.h for more information about this method (and others in this file).
-    num_particles = 2;
+    num_particles = 5;
 
     cout << "Start - init" << endl;
 
@@ -69,7 +69,7 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
     for (int i = 0; i < num_particles; ++i) {
 
         // if no yaw (driving straight):
-        if (fabs(yaw_rate) < 0.001) { 
+        if (fabs(yaw_rate) == 0) { 
 
             // use formulas from lessons
             particles[i].x += velocity * delta_t * cos(particles[i].theta); // cos > adjacent > x
@@ -200,7 +200,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
             // multivariate-gaussian probability - normalization term
             double gauss_norm = 1.0 / (2 * M_PI * sigma_x * sigma_y);
             //double exponent = exp(-dx*dx / (2*sigma_x*sigma_x))* exp(-dy*dy / (2*sigma_y*sigma_y));
-			double exponent = (-(dx*dx) / (2 * sigma_x * sigma_x)) + ((dy*dy) / (2 * sigma_y * sigma_y));
+			double exponent = ((dx*dx) / (2 * sigma_x * sigma_x)) + ((dy*dy) / (2 * sigma_y * sigma_y));
             weight *= gauss_norm * exponent;
             cout << "gauss norm: " << gauss_norm << "    exponent: " << exponent << "    weight: " << weight << endl;
             //cout << "trans obs loop end" << endl;
@@ -211,6 +211,10 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
         cout << "particles[" << i << "].weight is: " << weight << endl;
         weights[i] = weight;
     }
+
+	for (int i=0; i < particles.size(); ++i) {
+		cout << "Particle[" << i << "] weight is: " << particles[i].weight << endl;
+	}
 }
 
 
