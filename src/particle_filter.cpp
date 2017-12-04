@@ -69,7 +69,7 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
     for (int i = 0; i < num_particles; ++i) {
 
         // if no yaw (driving straight):
-        if (fabs(yaw_rate) == 0) { 
+        if (fabs(yaw_rate) < 0.001) { 
 
             // use formulas from lessons
             particles[i].x += velocity * delta_t * cos(particles[i].theta); // cos > adjacent > x
@@ -80,9 +80,9 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
         // if yaw (steering/turning front wheels):
         else {
 
-            particles[i].x  = velocity/yaw_rate * (sin(particles[i].theta + (yaw_rate * delta_t)) - sin(particles[i].theta));
+            particles[i].x += velocity/yaw_rate * (sin(particles[i].theta + (yaw_rate * delta_t)) - sin(particles[i].theta));
             particles[i].y += velocity/yaw_rate * (cos(particles[i].theta) - cos(particles[i].theta + (yaw_rate * delta_t)));
-            particles[i].theta = yaw_rate * delta_t;
+            particles[i].theta += yaw_rate * delta_t;
             
         }
 
@@ -111,24 +111,24 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::ve
     for (int i = 0; i < observations.size(); i++){
 
         int current_j;
-        double current_smallest_error = big_start;
+        double current_smallest_distance = big_start;
         //cout << "first ass loop" << endl;
 
         for (int j = 0; j < predicted.size(); j++) {
             //cout << "second j ass loop" << endl;
-            double error = dist(observations[i].x,observations[i].y,predicted[j].x,predicted[j].y);
+            double distance = dist(observations[i].x,observations[i].y,predicted[j].x,predicted[j].y);
 
-            cout << "Index["<< j << "] Observation = (" << observations[i].x << "," << observations[i].y << ")";
-            cout << "  Prediction = (" << predicted[i].x << "," << predicted[i].y << ")";
-            cout << "  Error = " << error << "(" << current_smallest_error << ")";
+            cout << "Ix["<< j << "] Transformed Obs: = (" << observations[i].x << "," << observations[i].y << ")";
+            cout << "  Landmark Seen = (" << predicted[i].x << "," << predicted[i].y << ")";
+            cout << "  Distance = " << distance << "(" << current_smallest_distance << ")";
             
 
-            if (error < current_smallest_error) {
+            if (distance < current_smallest_distance) {
                 cout << "  shorter!" << endl;
-                //cout << "previous error: " << current_smallest_error << endl;
-                //cout << "new smallest error: " << error << endl;
+                //cout << "previous distance: " << current_smallest_distance << endl;
+                //cout << "new smallest distance: " << distance << endl;
                 current_j = j;
-                current_smallest_error = error;
+                current_smallest_distance = distance;
                 //closest = predicted[j];
             }
             else { cout << endl;}
@@ -185,8 +185,6 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
             }
         }
 
-        // TODO: obs and preds look good NOT BAD ATLEAST, try and see if udpate is working correctly
-
         double weight = 1.0;
         //double gauss_norm;
 
@@ -201,7 +199,8 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 
             // multivariate-gaussian probability - normalization term
             double gauss_norm = 1.0 / (2 * M_PI * sigma_x * sigma_y);
-            double exponent = exp(-dx*dx / (2*sigma_x*sigma_x))* exp(-dy*dy / (2*sigma_y*sigma_y));
+            //double exponent = exp(-dx*dx / (2*sigma_x*sigma_x))* exp(-dy*dy / (2*sigma_y*sigma_y));
+			double exponent = (-(dx*dx) / (2 * sigma_x * sigma_x)) + ((dy*dy) / (2 * sigma_y * sigma_y));
             weight *= gauss_norm * exponent;
             cout << "gauss norm: " << gauss_norm << "    exponent: " << exponent << "    weight: " << weight << endl;
             //cout << "trans obs loop end" << endl;
